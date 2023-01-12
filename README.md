@@ -1,24 +1,16 @@
-# SQL Queries
-* SQL practice with world database.  
+# SQL queries
+
+A repo with a collection of SQL queries.  
 
 
-## world database
+## [sql_introduction.sql](sql_introduction.sql)
+DDL, DML SQL commands and some built-in SQL functions.
 
-### **city**  
-![city](images/city.png)  
+## [sql-queries.sql](sql-queries.sql)
+A practise with world database of the most relevant SQL queries.
 
-
-### **country**  
-![country](images/country.png)  
-
-
-### **country language**  
-![countrylanguage](images/countrylanguage.png)  
-
-
-## SQL Practice
-In sql-queries.sql you will find a practice with world database of the most relevant SQL queries.
-
+## [sql_practise.sql](sql_practise.sql)
+Another practise with more SQL queries.
 
 ## SQL commands
 * Data Manipulate Language (DML)
