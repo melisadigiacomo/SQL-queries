@@ -10,7 +10,7 @@ DDL, DML SQL commands and some built-in SQL functions.
 A practise with world database of the most relevant SQL queries.
 
 ## [sql_practise.sql](sql_practise.sql)
-Another practise with more SQL queries.
+Another practise with more SQL queries. Joins, subqueries, triggers, stored procedures, views and Windows functions.
 
 ## SQL commands
 * Data Manipulate Language (DML)

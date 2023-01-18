@@ -123,6 +123,11 @@ SELECT * FROM employees;
 
 SELECT distinct city FROM employees;
 
+
+------------------
+-- SOME QUERIES --
+------------------
+
 -- Average age in each city
 SELECT avg(age) FROM employees;
 SELECT city, round(avg(age)) AS avg_age FROM employees
@@ -173,7 +178,6 @@ GROUP BY city
 HAVING avg(salary) < 20000
 ORDER BY avg(salary) DESC;
 
-
 -- Create a sales table
 CREATE TABLE sales (
 	product_id INT,
@@ -215,13 +219,6 @@ insert into sales (product_id, sell_price, quantity, city) values (125, 478.5, 6
 
 SELECT * FROM sales;
 
--- Remove the table (from the database)
--- DROP TABLE sales;
-
--- Remove only the content of a table
--- It does not change the structure
--- TRUNCATE TABLE sql_intro.sales;
-
 -- Revenue
 SELECT product_id, sum(sell_price * quantity) AS revenue FROM sales
 GROUP BY product_id;
@@ -232,12 +229,16 @@ CREATE TABLE c_product (
 	cost_price FLOAT);
 
 insert into c_product values (121, 270.0);
-insert into c_product values (122, 250.0);
-insert into c_product values (123, 245.0);
+insert into c_product values (122, 250.0); -- without product_id 123
 insert into c_product values (124, 223.0);
 insert into c_product values (125, 237.0);
 
 SELECT * FROM c_product;
+
+
+-----------
+-- JOINS --
+-----------
 
 -- Combine two tables
 -- The INNER JOIN keyword selects records that have matching values in both tables
@@ -246,4 +247,359 @@ FROM sales AS s INNER JOIN c_product as c
 WHERE s.product_id = c.product_id
 GROUP BY c.product_id;
 
+-- Concat cols and combine tables
+SELECT s.product_id, concat(s.sell_price, ' - ', c.cost_price) AS sell_cost_price
+FROM sales AS s INNER JOIN c_product AS c
+ON s.product_id = c.product_id;
 
+-- FULL OUTER JOIN in MySQL Workbench
+-- Left join + UNION operator + right join
+SELECT s.product_id, c.cost_price, s.sell_price
+FROM sales AS s LEFT JOIN c_product as c
+ON s.product_id = c.product_id
+UNION
+SELECT c.product_id, c.cost_price, s.sell_price
+FROM sales AS s RIGHT JOIN c_product as c
+ON s.product_id = c.product_id;
+
+-------------------------
+-- REMOVE AND TRUNCATE --
+-------------------------
+
+-- Remove the table (from the database)
+-- DROP TABLE sales;
+
+-- Remove only the content of a table
+-- It does not change the structure
+-- TRUNCATE TABLE sql_intro.sales;
+
+--------------
+-- SUBQUERY --
+--------------
+
+-- A subquery is a query that appears inside another query statement
+
+-- Subqueries with SELECT statement
+-- Product with highest cost price
+SELECT product_id, cost_price AS max_cost_price FROM c_product
+WHERE cost_price = (SELECT max(cost_price) FROM c_product);
+
+-- Employees with salary higher than the avg salary (55933.87100)
+SELECT emp_name, salary FROM employees
+WHERE salary > (SELECT avg(salary) FROM employees);
+
+-- Subqueries with INSERT statement
+CREATE TABLE products(
+prod_id int, 
+item varchar(30),
+sell_price float, 
+product_type varchar(30)
+);
+
+INSERT INTO products values
+(101, 'Jewellery', 1800, 'Luxury'),
+(102, 'T-Shirt', 100, 'Non-Luxury'),
+(103, 'Laptop', 1300, 'Luxury'),
+(104, 'Table', 400, 'Non-Luxury');
+
+SELECT * FROM products;
+
+CREATE TABLE orders(
+order_id int, 
+product_sold varchar(30),
+selling_price float);
+
+INSERT INTO orders 
+SELECT prod_id, item, sell_price FROM products
+WHERE prod_id IN (SELECT prod_id FROM products WHERE sell_price > 1000);
+
+SELECT * FROM orders;
+
+-- These ones without the safe update mode
+SET SQL_SAFE_UPDATES = 0;
+
+-- Subqueries with UPDATE statement
+UPDATE orders
+SET selling_price = selling_price * 1.35
+WHERE selling_price IN (SELECT sell_price FROM products WHERE sell_price < 1500);
+-- update only Laptop 1300 sell_price and is present in orders- Laptop 1755
+
+SELECT * FROM orders;
+
+-- Subqueries with DELETE statement
+DELETE FROM orders
+WHERE selling_price IN (SELECT sell_price FROM products WHERE sell_price > 1500);
+-- delete Jewellery 1800 sell_price
+
+SELECT * FROM orders;
+
+-- Set safe update mode back
+SET SQL_SAFE_UPDATES = 1;
+
+
+--------------
+-- TRIGGERS --
+--------------
+
+-- A trigger is a stored procedure in database which automatically invokes 
+-- whenever a special event in the database occurs
+
+-- BEFORE INSERT trigger
+CREATE TABLE cust(
+cust_id int, 
+age int,
+name varchar(30));
+
+delimiter //
+CREATE TRIGGER age_verify
+BEFORE INSERT ON cust
+FOR EACH ROW
+IF NEW.age < 0 THEN SET NEW.age = 0;
+END IF; //
+
+INSERT INTO cust
+values(101, 27, "James"),
+(102, -40, "Amy"),
+(103, 25, "Paul");
+
+SELECT * FROM cust;
+
+-- AFTER INSERT
+CREATE TABLE customers(
+id int auto_increment primary key,
+name varchar(40) not null,
+email varchar(30),
+birthdate date);
+
+CREATE TABLE message(
+id int auto_increment,
+messageID int, 
+message varchar(300) not null,
+primary key (id, messageID));
+
+
+delimiter //
+CREATE TRIGGER
+check_null_dob
+AFTER INSERT
+ON customers
+FOR EACH ROW
+BEGIN
+IF NEW.birthdate IS NULL THEN
+INSERT INTO message (messageID, message)
+values (NEW.id, concat('Hi ', NEW.name, ', please udate your date of birth'));
+END IF;
+END //
+delimiter ;
+
+INSERT INTO customers (name, email, birthdate)
+values ("Nancy", "nancy@abc.com", NULL),
+("Ronald", "ronalds@acb.com", "1998-11-16"),
+("Chris", "chris@amd.com", "1997-04-11"),
+("Alice", "alice@fkk.com", NULL);
+
+SELECT * FROM message;
+SELECT * FROM customers;
+
+-- BEFORE UPDATE trigger
+
+-- These ones without the safe update mode
+SET SQL_SAFE_UPDATES = 0;
+
+INSERT INTO orders
+values (104, "Chair", 200),
+(105, "Phone", 1000),
+(106, "Kitchen", 2300);
+
+SELECT * FROM orders;
+
+delimiter //
+CREATE TRIGGER upd_trigger
+BEFORE UPDATE
+ON orders
+FOR EACH ROW
+BEGIN
+IF NEW.selling_price = 200 THEN
+SET NEW.selling_price = 300;
+ELSEIF NEW.selling_price > 1000 THEN
+SET NEW.selling_price = 3000;
+END IF;
+END //
+delimiter ;
+
+UPDATE orders
+SET selling_price = selling_price * 1.35; 
+-- update and trigger
+
+SELECT * FROM orders;
+
+-- delete TRIGGER
+DROP trigger upd_trigger;
+
+-- BEFORE DELETE trigger
+CREATE TABLE orders_delete(
+id int primary key auto_increment,
+order_id int,
+product_sold varchar(30),
+selling_price float,
+deleted_prod_at timestamp default now());
+
+delimiter $$
+CREATE TRIGGER prod_delete
+BEFORE DELETE 
+ON orders
+FOR EACH ROW
+BEGIN
+INSERT INTO orders_delete (order_id, product_sold, selling_price)
+values(OLD.order_id, OLD.product_sold, OLD.selling_price);
+END $$
+delimiter ;
+
+SELECT * FROM orders;
+
+DELETE FROM orders
+WHERE order_id = 103;
+
+SELECT * FROM orders;
+SELECT * FROM orders_delete;
+-- Save the deteled order in another table with date
+
+SET SQL_SAFE_UPDATES = 1;
+
+-- BEFORE INSERT ON trigger
+SELECT * FROM orders;
+
+delimiter //
+CREATE TRIGGER verify_product
+BEFORE INSERT ON orders
+FOR EACH ROW
+IF NEW.selling_price < 100 THEN SET NEW.selling_price = 150;
+END IF //
+delimiter ;
+
+INSERT INTO orders
+values(107, 'Table', 300),
+(108, 'Mouse', 50),
+(109, 'Keyboard', 99); 
+
+SELECT * FROM orders;
+
+
+----------------------
+-- STORED PROCEDURE --
+----------------------
+
+-- A stored procedure is a prepared SQL code that you can save, so the code can be reused over and over again.
+-- In schemas, SP appear in Stored Procedures
+
+SELECT * from employees;
+
+delimiter &&
+CREATE PROCEDURE top_employees()
+BEGIN
+SELECT emp_name, age, salary
+FROM employees
+WHERE salary > 60000;
+END &&
+delimiter ;
+
+CALL top_employees();
+
+-- SP using IN
+delimiter //
+CREATE PROCEDURE sp_sortbysalary(IN var int)
+BEGIN
+SELECT emp_name, age, salary FROM employees
+ORDER BY salary DESC LIMIT var;
+END //
+delimiter ;
+
+-- IN parameter 3 in this case will give the 3 employees with the highest salary
+CALL sp_sortbysalary(3);
+
+-- UPDATE in SP, IN Ooperator twice
+
+SET SQL_SAFE_UPDATES = 0;
+
+SELECT * FROM orders;
+
+delimiter //
+CREATE PROCEDURE updateprice(IN selected_product varchar(30), IN new_selling_price float)
+BEGIN
+UPDATE orders SET
+selling_price = new_selling_price WHERE product_sold = selected_product;
+END //
+delimiter ;
+
+-- delete a SP
+-- DROP procedure IF EXISTS updateprice; 
+
+CALL updateprice('Chair', 260);
+CALL updateprice('Phone', 2600); -- should deleted upd_trigger to change this price
+
+SELECT * FROM orders;
+
+SET SQL_SAFE_UPDATES = 1;
+
+-- SP using OUT
+SELECT * from employees;
+
+delimiter //
+CREATE PROCEDURE count_fem_employees(OUT total_emp int)
+BEGIN
+SELECT count(emp_name) INTO total_emp FROM employees
+WHERE gender = "Female";
+END //
+delimiter ;
+
+CALL count_fem_employees(@F_emp);
+SELECT @F_emp AS female_employees; -- 44 female employees
+
+-----------
+-- VIEWS --
+-----------
+
+-- In SQL, a view is a virtual table based on the result-set of an SQL statement.
+-- A view contains rows and columns, just like a real table. 
+-- In schemas, VIEWS appear in the menu
+
+SELECT * FROM orders;
+
+CREATE VIEW order_details
+AS
+SELECT product_sold, selling_price
+FROM orders;
+
+SELECT * FROM order_details;
+
+-- We can create a VIEW with a JOIN inside
+
+SHOW FULL TABLES
+WHERE table_type = 'VIEW';
+
+-- DELETE VIEW
+-- DROP VIEW order_details;
+
+-----------------------
+-- WINDOWS FUNCTIONS --
+-----------------------
+
+SELECT gender, city, salary,
+sum(salary) OVER (PARTITION BY gender) AS salary_by_gender
+FROM employees;
+
+SELECT row_number() OVER (ORDER BY salary) AS row_num,
+emp_name, salary FROM employees
+ORDER BY salary;
+
+SELECT emp_name, salary,
+rank() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+SELECT emp_name, salary, first_value(emp_name)
+OVER (ORDER BY salary DESC) AS highest_salary
+FROM employees;
+
+SELECT emp_name, gender, salary, first_value(emp_name)
+OVER (PARTITION BY gender ORDER BY salary DESC) AS highest_salary_gender
+FROM employees;
